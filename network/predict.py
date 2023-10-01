@@ -17,6 +17,7 @@ from symmetry import symm_subunit_matrix, find_symm_subs, get_symm_map
 from data_loader import merge_a3m_hetero
 import json
 import random
+import re;
 
 # suppress dgl warning w/ newest pytorch
 import warnings
@@ -211,7 +212,7 @@ class Predictor():
             msas.append(msa_i)
             inss.append(ins_i)
             Ls.extend(Ls_i)
-            Ls_blocked.append(msa_i.shape[0])
+            Ls_blocked.append(msa_i.shape[1])
 
         msa_orig = {'msa':msas[0],'ins':inss[0]}
         for i in range(1,len(Ls_blocked)):
@@ -489,9 +490,11 @@ if __name__ == "__main__":
     else:
         print ("Running on CPU")
         pred = Predictor(args.model, torch.device("cpu"))
-
+    inputss = [];
+    for ii in list(args.inputs):
+        inputss.extend(re.split(",",ii));
     pred.predict(
-        inputs=args.inputs, 
+        inputs=inputss, 
         out_prefix=args.prefix, 
         symm=args.symm, 
         n_recycles=args.n_recycles, 
