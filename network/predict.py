@@ -314,7 +314,8 @@ class Predictor():
         for i_trial in range(n_models):
             #if os.path.exists("%s_%02d_init.pdb"%(out_prefix, i_trial)):
             #    continue
-            torch.cuda.reset_peak_memory_stats()
+            if self.device != torch.device("cpu"):
+                torch.cuda.reset_peak_memory_stats()
             start_time = time.time()
             self.run_prediction(
                 msa_orig, ins_orig, 
@@ -326,10 +327,13 @@ class Predictor():
                 msa_mask=msa_mask
             )
             runtime = time.time() - start_time
-            vram = torch.cuda.max_memory_allocated() / 1e9
-            print(f"runtime={runtime:.2f} vram={vram:.2f}")
-            torch.cuda.empty_cache()
-
+            if self.device != torch.device("cpu"):
+                vram = torch.cuda.max_memory_allocated() / 1e9
+                print(f"runtime={runtime:.2f} vram={vram:.2f}")
+                torch.cuda.empty_cache()
+            else:
+                print(f"runtime={runtime:.2f}")
+    
     def run_prediction(
         self, msa_orig, ins_orig, 
         t1d, t2d, xyz_t, alpha_t, mask_t, 
@@ -388,10 +392,13 @@ class Predictor():
                 seq = seq.unsqueeze(0)
                 msa_seed = msa_seed.unsqueeze(0)
                 msa_extra = msa_extra.unsqueeze(0)
+                if self.device != torch.device("cpu"):
+                    msa_seed = msa_seed.half()
+                    msa_extra = msa_extra.half()
 
                 with torch.cuda.amp.autocast(True):
                     logit_s, logit_aa_s, _, logits_pae, p_bind, xyz_prev, alpha, symmsub, pred_lddt, msa_prev, pair_prev, state_prev = self.model(
-                                                               msa_seed.half(), msa_extra.half(),
+                                                               msa_seed, msa_extra,
                                                                seq, xyz_prev, 
                                                                idx_pdb,
                                                                t1d=t1d, t2d=t2d, xyz_t=xyz_t,
